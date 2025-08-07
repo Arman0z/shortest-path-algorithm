@@ -1,0 +1,26 @@
+# Core dependencies
+numpy>=1.21.0
+heapq-max>=0.21
+dataclasses>=0.6
+
+# Testing
+pytest>=7.0.0
+pytest-benchmark>=3.4.1
+hypothesis>=6.0.0
+
+# Benchmarking and analysis
+matplotlib>=3.5.0
+pandas>=1.4.0
+networkx>=2.8.0
+scipy>=1.8.0
+
+# Visualization (optional)
+plotly>=5.0.0
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+
+# Development tools
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.950
+pre-commit>=2.20.0
