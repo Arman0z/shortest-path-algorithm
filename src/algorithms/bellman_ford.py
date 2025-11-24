@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Optional, Set
+from typing import Dict, List, Tuple, Optional, Set, Any
 from ..core.graph import Graph
 
 
@@ -103,7 +103,7 @@ class BellmanFordSSSP:
         path.reverse()
         return path, self.distances[target]
     
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         return {
             "iterations": self.iterations_performed,
             "relaxations": self.num_relaxations,
@@ -181,7 +181,7 @@ class SelectiveBellmanFord:
         
         return self.distances
     
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         return {
             "influential_nodes": len(self.influential_nodes),
             "relaxations": self.num_relaxations,

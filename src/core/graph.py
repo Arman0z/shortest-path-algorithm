@@ -1,6 +1,5 @@
-from typing import Dict, List, Set, Tuple, Optional, Union
+from typing import Dict, List, Set, Tuple, Optional
 from dataclasses import dataclass, field
-import heapq
 from collections import defaultdict, deque
 
 

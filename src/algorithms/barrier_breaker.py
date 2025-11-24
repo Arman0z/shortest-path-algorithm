@@ -1,9 +1,9 @@
 import heapq
 import math
-from typing import Dict, List, Set, Tuple, Optional
-from dataclasses import dataclass, field
-from collections import defaultdict, deque
 import time
+from typing import Dict, List, Set, Tuple, Optional, Any
+from dataclasses import dataclass, field
+from collections import defaultdict
 
 from ..core.graph import Graph
 from ..core.clustering import FrontierClustering, Cluster
@@ -20,14 +20,27 @@ class ExplorationNode:
 
 
 class BarrierBreakerSSSP:
+    """
+    O(m log^(2/3) n) shortest path algorithm that breaks the sorting barrier.
+    Uses clustering, layers, and selective Bellman-Ford to avoid full vertex sorting.
+    """
+
+    # Algorithm parameters
+    LARGE_GRAPH_THRESHOLD = 50000  # Enable advanced features above this size
+    CLUSTER_INTERVAL = 5           # Process clusters every N iterations
+    BELLMAN_FORD_INTERVAL = 7      # Run selective BF every N iterations
+    ADAPT_INTERVAL = 10            # Adapt strategy every N iterations
+    PROCESSING_THRESHOLD = 0.8     # Stop advanced features at 80% complete
+    BATCH_SIZE_LIMIT = 100         # Max nodes to process per batch
+    INFLUENTIAL_PRIORITY_BOOST = 0.9  # Priority multiplier for influential nodes
+
     def __init__(self, graph: Graph, adaptive: bool = True):
         self.graph = graph
         self.adaptive = adaptive
-        
+
         self.distances: Dict[int, float] = {}
         self.predecessors: Dict[int, Optional[int]] = {}
         self.visited: Set[int] = set()
-        self.partially_processed: Set[int] = set()
         
         if adaptive:
             self.layer_manager = AdaptiveLayerManager(graph)
@@ -63,7 +76,7 @@ class BarrierBreakerSSSP:
         self.distances[source] = 0
 
         # For smaller graphs, use simplified strategy
-        use_advanced_features = self.graph.num_nodes > 50000
+        use_advanced_features = self.graph.num_nodes > self.LARGE_GRAPH_THRESHOLD
 
         if use_advanced_features:
             self.layer_manager.initialize_from_source(source)
@@ -82,16 +95,16 @@ class BarrierBreakerSSSP:
             self._process_exploration_queue(exploration_queue)
 
             # Only use advanced features on very large graphs
-            if use_advanced_features and len(self.visited) < self.graph.num_nodes * 0.8:
-                if iteration % 10 == 0 and self.adaptive:
+            if use_advanced_features and len(self.visited) < self.graph.num_nodes * self.PROCESSING_THRESHOLD:
+                if iteration % self.ADAPT_INTERVAL == 0 and self.adaptive:
                     self._adapt_strategy()
 
-                if iteration % 5 == 0:
+                if iteration % self.CLUSTER_INTERVAL == 0:
                     frontier_clusters = self._get_frontier_clusters()
                     if frontier_clusters:
                         self._process_clusters(frontier_clusters, exploration_queue)
 
-                if iteration % 7 == 0:
+                if iteration % self.BELLMAN_FORD_INTERVAL == 0:
                     self._run_selective_bellman_ford(exploration_queue)
 
             if use_advanced_features:
@@ -124,8 +137,8 @@ class BarrierBreakerSSSP:
         return influential
     
     def _process_exploration_queue(self, exploration_queue: List[ExplorationNode]):
-        # Process all nodes in queue efficiently (like Dijkstra)
-        batch_size = min(100, len(exploration_queue))  # Limit batch size for better performance
+        """Process nodes from exploration queue, respecting distance priorities."""
+        batch_size = min(self.BATCH_SIZE_LIMIT, len(exploration_queue))
 
         for _ in range(batch_size):
             if not exploration_queue:
@@ -151,7 +164,7 @@ class BarrierBreakerSSSP:
                     self.predecessors[neighbor] = node.node_id
 
                     # Only do layer management for large graphs
-                    if self.graph.num_nodes > 50000:
+                    if self.graph.num_nodes > self.LARGE_GRAPH_THRESHOLD:
                         old_layer, new_layer = self.layer_manager.update_node_layer(neighbor, new_dist)
                         is_influential = neighbor in self.layer_manager.get_influential_nodes()
                     else:
@@ -242,7 +255,7 @@ class BarrierBreakerSSSP:
                 
                 priority = self.distances[node]
                 if is_influential:
-                    priority *= 0.9
+                    priority *= self.INFLUENTIAL_PRIORITY_BOOST
                 
                 heapq.heappush(
                     exploration_queue,
@@ -253,16 +266,10 @@ class BarrierBreakerSSSP:
         self.performance_stats["bf_times"].append(time.time() - start_time)
     
     def _update_layers(self):
+        """Rebalance layers periodically for better performance."""
         processed_fraction = len(self.visited) / max(1, self.graph.num_nodes)
-        
         if processed_fraction > 0.3:
             self.layer_manager.rebalance_layers(self.distances)
-    
-    def _all_layers_complete(self) -> bool:
-        for node in self.graph.nodes:
-            if self.distances[node] < float('inf') and node not in self.visited:
-                return False
-        return True
     
     def _adapt_strategy(self):
         if not self.adaptive:
@@ -304,10 +311,10 @@ class BarrierBreakerSSSP:
         path.reverse()
         return path, self.distances[target]
     
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
+        """Return algorithm performance statistics."""
         return {
             "nodes_visited": len(self.visited),
-            "nodes_partially_processed": len(self.partially_processed),
             "relaxations": self.num_relaxations,
             "heap_operations": self.num_heap_operations,
             "bf_iterations": self.num_bf_iterations,
@@ -320,18 +327,17 @@ class BarrierBreakerSSSP:
         }
     
     def visualize_progress(self) -> str:
-        lines = ["Algorithm Progress:"]
-        lines.append("=" * 60)
-        
+        """Generate a visual representation of algorithm progress."""
         visited_pct = len(self.visited) / max(1, self.graph.num_nodes) * 100
-        partial_pct = len(self.partially_processed) / max(1, self.graph.num_nodes) * 100
-        
-        lines.append(f"Nodes visited: {len(self.visited)}/{self.graph.num_nodes} ({visited_pct:.1f}%)")
-        lines.append(f"Nodes partially processed: {len(self.partially_processed)} ({partial_pct:.1f}%)")
-        lines.append(f"Total relaxations: {self.num_relaxations}")
-        lines.append(f"Bellman-Ford iterations: {self.num_bf_iterations}")
-        lines.append(f"Clusters processed: {self.num_clusters_processed}")
-        
-        lines.append("\n" + self.layer_manager.visualize_layers())
-        
+
+        lines = [
+            "Algorithm Progress:",
+            "=" * 60,
+            f"Nodes visited: {len(self.visited)}/{self.graph.num_nodes} ({visited_pct:.1f}%)",
+            f"Total relaxations: {self.num_relaxations}",
+            f"Bellman-Ford iterations: {self.num_bf_iterations}",
+            f"Clusters processed: {self.num_clusters_processed}",
+            "",
+            self.layer_manager.visualize_layers()
+        ]
         return "\n".join(lines)

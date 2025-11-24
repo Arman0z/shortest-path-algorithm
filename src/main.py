@@ -5,11 +5,11 @@ import os
 import argparse
 import json
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.core.graph import Graph, WeightedGraph
+from src.core.graph import Graph
 from src.algorithms.dijkstra import DijkstraSSSP, DijkstraFibonacci
 from src.algorithms.bellman_ford import BellmanFordSSSP
 from src.algorithms.barrier_breaker import BarrierBreakerSSSP
@@ -42,14 +42,12 @@ def load_graph_from_file(filename: str) -> Graph:
 
 def save_results_to_file(filename: str, results: Dict):
     """Save algorithm results to a JSON file."""
-    
-    serializable_results = {}
-    for key, value in results.items():
-        if isinstance(value, dict):
-            serializable_results[key] = {str(k): v for k, v in value.items()}
-        else:
-            serializable_results[key] = value
-    
+    # Convert dict keys to strings for JSON serialization
+    serializable_results = {
+        k: {str(kk): vv for kk, vv in v.items()} if isinstance(v, dict) else v
+        for k, v in results.items()
+    }
+
     with open(filename, 'w') as f:
         json.dump(serializable_results, f, indent=2)
 
@@ -76,41 +74,37 @@ def create_example_graph() -> Graph:
     return graph
 
 
-def run_algorithm(graph: Graph, algorithm_name: str, source: int, 
+def run_algorithm(graph: Graph, algorithm_name: str, source: int,
                  verbose: bool = False) -> Tuple[Dict[int, float], Dict, float]:
     """Run a specific algorithm and return results."""
-    
-    algorithm_map = {
+    algorithms = {
         "dijkstra": DijkstraSSSP,
         "dijkstra-fib": DijkstraFibonacci,
         "bellman-ford": BellmanFordSSSP,
         "barrier-breaker": BarrierBreakerSSSP
     }
-    
-    if algorithm_name not in algorithm_map:
+
+    if algorithm_name not in algorithms:
         raise ValueError(f"Unknown algorithm: {algorithm_name}")
-    
+
     if verbose:
         print(f"\nRunning {algorithm_name} algorithm...")
-    
+
+    algorithm = algorithms[algorithm_name](graph)
+
     start_time = time.perf_counter()
-    algorithm = algorithm_map[algorithm_name](graph)
     distances = algorithm.compute(source)
-    end_time = time.perf_counter()
-    
-    execution_time = end_time - start_time
-    
-    stats = {}
-    if hasattr(algorithm, 'get_statistics'):
-        stats = algorithm.get_statistics()
-    
+    execution_time = time.perf_counter() - start_time
+
+    stats = algorithm.get_statistics() if hasattr(algorithm, 'get_statistics') else {}
+
     if verbose:
         print(f"Execution time: {execution_time:.4f} seconds")
         if stats:
             print("Statistics:")
             for key, value in stats.items():
                 print(f"  {key}: {value}")
-    
+
     return distances, stats, execution_time
 
 

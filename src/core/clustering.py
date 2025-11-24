@@ -1,4 +1,4 @@
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
 import math
@@ -54,12 +54,17 @@ class Cluster:
 
 
 class FrontierClustering:
+    """
+    Manages clustering of frontier nodes to reduce comparison operations.
+    Groups neighboring nodes to process representatives instead of all nodes.
+    """
+
     def __init__(self, graph: Graph, cluster_size_hint: Optional[int] = None):
         self.graph = graph
         self.clusters: Dict[int, Cluster] = {}
         self.node_to_cluster: Dict[int, int] = {}
         self.next_cluster_id = 0
-        
+
         if cluster_size_hint is None:
             self.target_cluster_size = max(1, int(math.sqrt(len(graph.nodes))))
         else:
@@ -263,7 +268,7 @@ class FrontierClustering:
         
         return connectivity_score * 0.7 + distance_similarity * 0.3
     
-    def get_statistics(self) -> Dict[str, any]:
+    def get_statistics(self) -> Dict[str, Any]:
         total_nodes = sum(c.size() for c in self.clusters.values())
         avg_size = total_nodes / max(1, len(self.clusters))
         

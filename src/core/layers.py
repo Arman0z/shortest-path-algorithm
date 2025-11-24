@@ -1,6 +1,5 @@
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Any
 from dataclasses import dataclass, field
-from collections import defaultdict, deque
 import math
 from .graph import Graph
 
@@ -39,17 +38,22 @@ class Layer:
 
 
 class LayerManager:
+    """
+    Manages graph layering by distance ranges for efficient exploration.
+    Enables processing nodes in layers without strict distance ordering.
+    """
+
     def __init__(self, graph: Graph, layer_granularity: Optional[float] = None):
         self.graph = graph
         self.layers: List[Layer] = []
         self.node_to_layer: Dict[int, int] = {}
         self.current_layer_id = 0
-        
+
         if layer_granularity is None:
             self.layer_width = self._compute_adaptive_width()
         else:
             self.layer_width = layer_granularity
-        
+
         self.max_distance = 0.0
         
     def _compute_adaptive_width(self) -> float:
@@ -210,7 +214,7 @@ class LayerManager:
         for node_id, distance in nodes_to_reassign:
             self.update_node_layer(node_id, distance)
     
-    def get_layer_statistics(self) -> List[Dict[str, any]]:
+    def get_layer_statistics(self) -> List[Dict[str, Any]]:
         stats = []
         
         for layer in self.layers:
