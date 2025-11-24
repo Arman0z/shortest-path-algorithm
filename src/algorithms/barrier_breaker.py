@@ -51,49 +51,52 @@ class BarrierBreakerSSSP:
     
     def compute(self, source: int) -> Dict[int, float]:
         start_time = time.time()
-        
+
         self.distances = {node: float('inf') for node in self.graph.nodes}
         self.predecessors = {node: None for node in self.graph.nodes}
         self.visited = set()
         self.partially_processed = set()
-        
+
         if source not in self.graph.nodes:
             raise ValueError(f"Source node {source} not in graph")
-        
+
         self.distances[source] = 0
-        
-        self.layer_manager.initialize_from_source(source)
-        
-        influential_nodes = self._identify_influential_nodes(source)
-        self.layer_manager.mark_influential_nodes(influential_nodes, self.distances)
-        
+
+        # For smaller graphs, use simplified strategy
+        use_advanced_features = self.graph.num_nodes > 50000
+
+        if use_advanced_features:
+            self.layer_manager.initialize_from_source(source)
+            influential_nodes = self._identify_influential_nodes(source)
+            self.layer_manager.mark_influential_nodes(influential_nodes, self.distances)
+
         exploration_queue = []
         heapq.heappush(exploration_queue, ExplorationNode(0, source, 0, False))
         self.num_heap_operations += 1
-        
+
         iteration = 0
-        while exploration_queue or not self._all_layers_complete():
+        while exploration_queue:
             iteration += 1
-            
+
             # Process the main exploration queue
-            if exploration_queue:
-                self._process_exploration_queue(exploration_queue)
-            
-            # Only use clustering and Bellman-Ford when beneficial
-            if len(self.visited) < self.graph.num_nodes * 0.8:
+            self._process_exploration_queue(exploration_queue)
+
+            # Only use advanced features on very large graphs
+            if use_advanced_features and len(self.visited) < self.graph.num_nodes * 0.8:
                 if iteration % 10 == 0 and self.adaptive:
                     self._adapt_strategy()
-                
-                if iteration % 3 == 0:
+
+                if iteration % 5 == 0:
                     frontier_clusters = self._get_frontier_clusters()
                     if frontier_clusters:
                         self._process_clusters(frontier_clusters, exploration_queue)
-                
-                if iteration % 5 == 0:
+
+                if iteration % 7 == 0:
                     self._run_selective_bellman_ford(exploration_queue)
-            
-            self._update_layers()
-        
+
+            if use_advanced_features:
+                self._update_layers()
+
         self.performance_stats["total_time"] = time.time() - start_time
         return self.distances
     
@@ -121,42 +124,46 @@ class BarrierBreakerSSSP:
         return influential
     
     def _process_exploration_queue(self, exploration_queue: List[ExplorationNode]):
-        batch_size = max(1, len(exploration_queue))  # Process all available nodes
-        
+        # Process all nodes in queue efficiently (like Dijkstra)
+        batch_size = min(100, len(exploration_queue))  # Limit batch size for better performance
+
         for _ in range(batch_size):
             if not exploration_queue:
                 break
-            
+
             node = heapq.heappop(exploration_queue)
             self.num_heap_operations += 1
-            
+
             if node.node_id in self.visited:
                 continue
-            
+
             if node.priority > self.distances[node.node_id]:
                 continue
-            
+
             self.visited.add(node.node_id)
-            
+
             for neighbor, weight in self.graph.get_neighbors(node.node_id):
                 self.num_relaxations += 1
                 new_dist = self.distances[node.node_id] + weight
-                
+
                 if new_dist < self.distances[neighbor]:
-                    old_dist = self.distances[neighbor]
                     self.distances[neighbor] = new_dist
                     self.predecessors[neighbor] = node.node_id
-                    
-                    old_layer, new_layer = self.layer_manager.update_node_layer(neighbor, new_dist)
-                    
-                    is_influential = neighbor in self.layer_manager.get_influential_nodes()
-                    
+
+                    # Only do layer management for large graphs
+                    if self.graph.num_nodes > 50000:
+                        old_layer, new_layer = self.layer_manager.update_node_layer(neighbor, new_dist)
+                        is_influential = neighbor in self.layer_manager.get_influential_nodes()
+                    else:
+                        new_layer = 0
+                        is_influential = False
+
                     # Use actual distance as priority to maintain correctness
                     priority = new_dist
-                    
+
                     if neighbor not in self.visited:
                         heapq.heappush(
-                            exploration_queue, 
+                            exploration_queue,
                             ExplorationNode(priority, neighbor, new_layer, is_influential)
                         )
                         self.num_heap_operations += 1

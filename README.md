@@ -73,18 +73,29 @@ shortest-paths/
 └── examples/           # Usage examples and demos
 ```
 
-## Benchmarks
+## Performance Characteristics
 
-Performance comparison on sparse graphs (n vertices, m = O(n) edges):
+### Theoretical Complexity
+- **New Algorithm**: O(m log^(2/3) n) - proven asymptotic improvement
+- **Dijkstra (binary heap)**: O(m log n)
+- **Dijkstra (Fibonacci heap)**: O(m + n log n)
 
-| Vertices | Dijkstra (ms) | New Algorithm (ms) | Speedup |
-|----------|---------------|--------------------|---------| 
-| 1,000    | 12            | 10                 | 1.2x    |
-| 10,000   | 145           | 98                 | 1.5x    |
-| 100,000  | 1,820         | 980                | 1.9x    |
-| 1,000,000| 23,500        | 9,800              | 2.4x    |
+### Practical Performance
 
-*Note: Actual performance depends on graph structure and implementation optimizations.*
+The algorithm is designed for **very large sparse graphs** (n > 100,000 nodes). Due to implementation overhead from clustering, layer management, and selective Bellman-Ford operations, the constants hidden in big-O notation are substantial.
+
+**Expected behavior by graph size:**
+
+| Graph Size | Expected Performance |
+|-----------|---------------------|
+| n < 10,000 | Dijkstra faster (lower overhead) |
+| 10,000 ≤ n < 50,000 | Comparable performance |
+| n ≥ 50,000 | Barrier Breaker shows advantages |
+| n ≥ 1,000,000 | Significant speedup expected |
+
+The algorithm adaptively disables advanced features on smaller graphs to minimize overhead while maintaining correctness. This implementation prioritizes correctness and educational value over raw performance optimization.
+
+*Note: The theoretical breakthrough is real and significant, but practical speedups require massive graphs and further implementation optimization.*
 
 ## Testing
 

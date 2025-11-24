@@ -74,7 +74,10 @@ def demo_comparison():
     print("\n" + "=" * 60)
     print("DEMO: Algorithm Comparison")
     print("=" * 60)
-    
+    print("\nNOTE: This algorithm is designed for very large graphs (n > 100,000).")
+    print("On smaller graphs, Dijkstra is expected to be faster due to lower overhead.")
+    print("The algorithm adaptively disables advanced features on small graphs.\n")
+
     # Create a larger graph for meaningful comparison
     print("Creating larger graph for comparison...")
     graph = Graph(directed=True)

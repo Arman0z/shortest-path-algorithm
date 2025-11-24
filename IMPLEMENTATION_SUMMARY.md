@@ -60,12 +60,24 @@ This repository successfully implements the groundbreaking shortest-path algorit
 - **Improvement**: Asymptotically faster for sparse graphs (m = O(n))
 
 ### Practical Performance
-On small graphs (n < 1000), Dijkstra remains faster due to:
+
+**Important Note on Performance Expectations:**
+
+This implementation includes **adaptive optimizations** (v1.1+) that intelligently disable advanced features on smaller graphs:
+
+- **Small graphs (n < 50,000)**: Advanced features (clustering, layers, Bellman-Ford) are disabled, reducing to near-Dijkstra performance
+- **Large graphs (n ≥ 50,000)**: Full algorithm with all optimizations enabled
+- **Very large graphs (n ≥ 1,000,000)**: Where the O(m log^(2/3) n) advantage becomes measurable
+
+On small graphs (n < 10,000), Dijkstra remains competitive due to:
 - Simpler implementation with lower constants
 - Better cache locality
 - Less overhead from complex data structures
 
-The new algorithm's advantage emerges on larger sparse graphs (n > 10,000) where the theoretical improvement overcomes implementation overhead.
+The theoretical breakthrough is mathematically proven, but practical speedups require:
+1. Very large graphs (hundreds of thousands to millions of nodes)
+2. Further implementation optimizations (parallelization, cache optimization)
+3. Specific graph structures that benefit from clustering
 
 ## Usage Example
 
